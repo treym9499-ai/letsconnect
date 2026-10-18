@@ -449,7 +449,10 @@ function newPC(callId, mySide, theirSide) {
   window.__pc = pc;
   const c = S.call;
   c.stream.getTracks().forEach((t) => pc.addTrack(t, c.stream));
-  pc.onicecandidate = (e) => { if (e.candidate) addDoc(collection(db, 'calls', callId, mySide), e.candidate.toJSON()).catch(() => {}); };
+  const sendCand = (cand) => addDoc(collection(db, 'calls', callId, mySide), cand).catch((er) => console.warn('ice', er));
+  c.pendingCands = [];
+  c.flushCands = () => { c.docReady = true; c.pendingCands.forEach(sendCand); c.pendingCands = []; };
+  pc.onicecandidate = (e) => { if (!e.candidate) return; const j = e.candidate.toJSON(); if (c.docReady) sendCand(j); else c.pendingCands.push(j); };
   pc.ontrack = (e) => { if (!c.audio) { c.audio = new Audio(); c.audio.autoplay = true; } c.audio.srcObject = e.streams[0]; c.audio.play().catch(() => {}); };
   const onState = () => {
     const ok = pc.connectionState === 'connected' || ['connected', 'completed'].includes(pc.iceConnectionState);
@@ -478,6 +481,7 @@ async function startCall(uid) {
   const pc = newPC(ref.id, 'callerCandidates', 'calleeCandidates'); S.call.pc = pc;
   const offer = await pc.createOffer(); await pc.setLocalDescription(offer);
   await setDoc(ref, { caller: S.user.uid, callee: uid, status: 'ringing', createdAt: serverTimestamp(), offer: { type: offer.type, sdp: offer.sdp } });
+  S.call.flushCands();
   updateDoc(doc(db, 'users', S.user.uid), { inCall: true }).catch(() => {});
   S.call.state = 'ringing'; callUI(); tone('ringback');
   S.call.unsubs.push(onSnapshot(ref, async (s) => {
@@ -510,7 +514,8 @@ async function acceptCall() {
   const c = S.call; if (!c || c.state !== 'incoming') return;
   stopTone(); clearTimeout(c.ringTimeout); c.state = 'connecting'; callUI();
   try { c.stream = await getMic(); } catch { c.endText = 'Microphone access denied'; return endCall('declined'); }
-  const pc = newPC(c.id, 'calleeCandidates', 'callerCandidates'); c.pc = pc;
+  c.docReady = true;
+  const pc = newPC(c.id, 'calleeCandidates', 'callerCandidates'); c.pc = pc; c.docReady = true;
   await pc.setRemoteDescription(new RTCSessionDescription(c.offer));
   const ans = await pc.createAnswer(); await pc.setLocalDescription(ans);
   await updateDoc(doc(db, 'calls', c.id), { answer: { type: ans.type, sdp: ans.sdp }, status: 'active' });
