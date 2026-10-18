@@ -481,6 +481,7 @@ async function startCall(uid) {
   const peer = S.friends.get(uid); if (!peer) return toast('You can only call friends');
   S.call = { role: 'caller', peer, state: 'calling', unsubs: [] }; callUI();
   try { S.call.stream = await getMic(); } catch { S.call.endText = 'Microphone access denied'; return endCall('cancel', true); }
+  console.debug('[call] mic ok');
   if (!S.call) return;
   const ref = doc(collection(db, 'calls')); S.call.id = ref.id;
   // Create the call doc first so the rules (which look up caller/callee on it) allow candidate reads/writes.
@@ -488,8 +489,10 @@ async function startCall(uid) {
   catch { S.call.endText = 'Could not start call'; return endCall(null, false, 'Could not start call'); }
   if (!S.call || S.call.id !== ref.id) { deleteDoc(ref).catch(() => {}); return; }
   S.call.docReady = true;
+  console.debug('[call] doc created');
   const pc = newPC(ref.id, 'callerCandidates', 'calleeCandidates'); S.call.pc = pc;
   const offer = await pc.createOffer(); await pc.setLocalDescription(offer);
+  console.debug('[call] offer ready');
   await updateDoc(ref, { status: 'ringing', createdAt: serverTimestamp(), offer: { type: offer.type, sdp: offer.sdp } });
   S.call.flushCands();
   updateDoc(doc(db, 'users', S.user.uid), { inCall: true }).catch(() => {});
