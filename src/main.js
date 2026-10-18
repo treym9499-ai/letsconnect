@@ -351,7 +351,7 @@ async function openChat(other) {
     S.msgs = snap.docs.map((d) => ({ id: d.id, ...d.data({ serverTimestamps: 'estimate' }) })).reverse();
     renderMsgs(); markRead();
   }, (e) => console.warn('msgs', e)));
-  S.chatUnsubs.push(onSnapshot(doc(db, 'chats', id), (s) => { if (s.exists() && S.openChat?.id === id) { S.openChat.data = { id, ...s.data() }; renderMsgs(); } }));
+  S.chatUnsubs.push(onSnapshot(doc(db, 'chats', id), (s) => { if (s.exists() && S.openChat?.id === id) { S.openChat.data = { id, ...s.data() }; renderMsgs(); markRead(); } }));
   const tt = setInterval(renderMsgs, 3000); S.chatUnsubs.push(() => clearInterval(tt));
   renderSide();
   if (matchMedia('(min-width:761px)').matches) ta.focus();
