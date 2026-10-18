@@ -493,7 +493,9 @@ async function startCall(uid) {
   const pc = newPC(ref.id, 'callerCandidates', 'calleeCandidates'); S.call.pc = pc;
   const offer = await pc.createOffer(); await pc.setLocalDescription(offer);
   console.debug('[call] offer ready');
-  await updateDoc(ref, { status: 'ringing', createdAt: serverTimestamp(), offer: { type: offer.type, sdp: offer.sdp } });
+  try { await updateDoc(ref, { status: 'ringing', createdAt: serverTimestamp(), offer: { type: offer.type, sdp: offer.sdp } }); }
+  catch (er) { console.warn('[call] offer write failed', er); return endCall(null, false, 'Could not start call'); }
+  console.debug('[call] ringing');
   S.call.flushCands();
   updateDoc(doc(db, 'users', S.user.uid), { inCall: true }).catch(() => {});
   S.call.state = 'ringing'; callUI(); tone('ringback');
