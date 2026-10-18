@@ -1,14 +1,18 @@
 import './style.css';
 import { APP_NAME, firebaseConfig, ICE_SERVERS, HEARTBEAT_MS, STALE_MS, RING_TIMEOUT_MS } from './config.js';
 import { initializeApp } from 'firebase/app';
-import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, deleteUser } from 'firebase/auth';
-import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, query, where, orderBy, limit,
+import { getAuth, connectAuthEmulator, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, deleteUser } from 'firebase/auth';
+import { getFirestore, connectFirestoreEmulator, doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, query, where, orderBy, limit,
   onSnapshot, serverTimestamp, writeBatch, increment, getDocs, deleteField } from 'firebase/firestore';
 
 document.title = APP_NAME;
 const fb = initializeApp(firebaseConfig);
 const auth = getAuth(fb);
 const db = getFirestore(fb);
+// Local testing against the Firebase emulators: add ?emu=1 to the URL (only honoured on localhost).
+if (new URLSearchParams(location.search).has('emu') && ['localhost', '127.0.0.1'].includes(location.hostname)) {
+  connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true }); connectFirestoreEmulator(db, '127.0.0.1', 8080);
+}
 const $ = (s, r = document) => r.querySelector(s);
 const app = $('#app');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -138,7 +142,7 @@ async function startApp(user) {
     renderSide();
   }));
   const subChats = () => S.unsubs.push(onSnapshot(query(collection(db, 'chats'), where('members', 'array-contains', user.uid), orderBy('lastAt', 'desc'), limit(100)), (snap) => {
-    S.chats = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    S.chats = snap.docs.map((d) => ({ id: d.id, ...d.data({ serverTimestamps: 'estimate' }) }));
     renderSide();
     if (S.openChat) { const c = S.chats.find((x) => x.id === S.openChat.id); if (c) { S.openChat.data = c; renderMsgs(); } }
     const unread = S.chats.reduce((n, c) => n + (c.unread?.[user.uid] || 0), 0);
@@ -351,7 +355,7 @@ async function openChat(other) {
     S.msgs = snap.docs.map((d) => ({ id: d.id, ...d.data({ serverTimestamps: 'estimate' }) })).reverse();
     renderMsgs(); markRead();
   }, (e) => console.warn('msgs', e)));
-  S.chatUnsubs.push(onSnapshot(doc(db, 'chats', id), (s) => { if (s.exists() && S.openChat?.id === id) { S.openChat.data = { id, ...s.data() }; renderMsgs(); markRead(); } }));
+  S.chatUnsubs.push(onSnapshot(doc(db, 'chats', id), (s) => { if (s.exists() && S.openChat?.id === id) { S.openChat.data = { id, ...s.data({ serverTimestamps: 'estimate' }) }; renderMsgs(); markRead(); } }));
   const tt = setInterval(renderMsgs, 3000); S.chatUnsubs.push(() => clearInterval(tt));
   renderSide();
   if (matchMedia('(min-width:761px)').matches) ta.focus();
@@ -399,8 +403,12 @@ function markRead() {
   const c = S.openChat; if (!c || document.visibilityState !== 'visible') return;
   const me = S.user.uid, d = c.data || {};
   const last = S.msgs[S.msgs.length - 1];
+  // Write at most once per newest message (prevents a snapshot->write->snapshot loop).
+  const key = `${last?.id || ''}|${d.unread?.[me] || 0}`;
+  if (c.markedKey === key) return;
   if ((d.unread?.[me] || 0) > 0 || (last && last.from !== me && ms(d.read?.[me]) < ms(last.at))) {
-    updateDoc(doc(db, 'chats', c.id), { [`unread.${me}`]: 0, [`read.${me}`]: serverTimestamp() }).catch(() => {});
+    c.markedKey = key;
+    updateDoc(doc(db, 'chats', c.id), { [`unread.${me}`]: 0, [`read.${me}`]: serverTimestamp() }).catch(() => { c.markedKey = null; });
   }
 }
 
@@ -495,7 +503,7 @@ async function startCall(uid) {
   console.debug('[call] offer ready');
   try { await updateDoc(ref, { status: 'ringing', createdAt: serverTimestamp(), offer: { type: offer.type, sdp: offer.sdp } }); }
   catch (er) { console.warn('[call] offer write failed', er); return endCall(null, false, 'Could not start call'); }
-  console.debug('[call] ringing');
+  
   S.call.flushCands();
   updateDoc(doc(db, 'users', S.user.uid), { inCall: true }).catch(() => {});
   S.call.state = 'ringing'; callUI(); tone('ringback');
