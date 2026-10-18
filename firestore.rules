@@ -1,0 +1,85 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function signedIn() { return request.auth != null; }
+    function me() { return request.auth.uid; }
+    function isFriend(a, b) { return exists(/databases/$(db)/documents/users/$(a)/friends/$(b)); }
+
+    // Public profile (no email stored). Any signed-in user may read; only owner writes.
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow create: if signedIn() && me() == uid
+        && request.resource.data.keys().hasOnly(['username','displayName','color','createdAt','lastActive','online','inCall'])
+        && request.resource.data.username is string && request.resource.data.displayName is string
+        && exists(/databases/$(db)/documents/usernames/$(request.resource.data.username))
+        && get(/databases/$(db)/documents/usernames/$(request.resource.data.username)).data.uid == uid;
+      allow update: if signedIn() && me() == uid
+        && request.resource.data.keys().hasOnly(['username','displayName','color','createdAt','lastActive','online','inCall'])
+        && request.resource.data.username == resource.data.username;
+      allow delete: if signedIn() && me() == uid;
+
+      // Friend list. Owner manages; the other party may add itself only when a pending request exists
+      // between them (accept), and may remove itself (unfriend).
+      match /friends/{fid} {
+        allow read: if signedIn() && (me() == uid || me() == fid);
+        allow create: if signedIn() && (
+          (me() == uid && (exists(/databases/$(db)/documents/friendRequests/$(fid + '_' + uid))
+                        || exists(/databases/$(db)/documents/friendRequests/$(uid + '_' + fid))))
+          || (me() == fid && exists(/databases/$(db)/documents/friendRequests/$(uid + '_' + fid))
+              && get(/databases/$(db)/documents/friendRequests/$(uid + '_' + fid)).data.to == fid));
+        allow delete: if signedIn() && (me() == uid || me() == fid);
+      }
+    }
+
+    match /usernames/{name} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.uid == me()
+        && name.matches('^[a-z0-9_]{3,20}$') && request.resource.data.keys().hasOnly(['uid']);
+      allow delete: if signedIn() && resource.data.uid == me();
+    }
+
+    match /friendRequests/{rid} {
+      allow read: if signedIn() && (resource.data.from == me() || resource.data.to == me());
+      allow create: if signedIn() && request.resource.data.from == me()
+        && request.resource.data.to != me()
+        && rid == me() + '_' + request.resource.data.to
+        && request.resource.data.keys().hasOnly(['from','to','createdAt'])
+        && !isFriend(me(), request.resource.data.to);
+      allow delete: if signedIn() && (resource.data.from == me() || resource.data.to == me());
+    }
+
+    match /chats/{chatId} {
+      function members() { return get(/databases/$(db)/documents/chats/$(chatId)).data.members; }
+      allow read: if signedIn() && me() in resource.data.members;
+      allow create: if signedIn() && me() in request.resource.data.members
+        && request.resource.data.members.size() == 2
+        && chatId == request.resource.data.members[0] + '_' + request.resource.data.members[1]
+        && isFriend(request.resource.data.members[0], request.resource.data.members[1]);
+      allow update: if signedIn() && me() in resource.data.members
+        && request.resource.data.members == resource.data.members;
+      allow delete: if signedIn() && me() in resource.data.members;
+
+      match /messages/{mid} {
+        allow read: if signedIn() && me() in members();
+        allow create: if signedIn() && me() in members() && request.resource.data.from == me()
+          && request.resource.data.text is string && request.resource.data.text.size() <= 4000;
+        allow delete: if signedIn() && me() in members();
+      }
+    }
+
+    match /calls/{callId} {
+      function party(d) { return me() == d.caller || me() == d.callee; }
+      function callDoc() { return get(/databases/$(db)/documents/calls/$(callId)).data; }
+      allow read: if signedIn() && party(resource.data);
+      allow create: if signedIn() && request.resource.data.caller == me()
+        && isFriend(me(), request.resource.data.callee);
+      allow update: if signedIn() && party(resource.data)
+        && request.resource.data.caller == resource.data.caller
+        && request.resource.data.callee == resource.data.callee;
+      allow delete: if signedIn() && party(resource.data);
+      match /{side}/{cid} {
+        allow read, write: if signedIn() && party(callDoc());
+      }
+    }
+  }
+}
