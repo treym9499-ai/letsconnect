@@ -1,5 +1,6 @@
 // Rename the app here — this is the only place the name lives.
-export const APP_NAME = 'TDM Chat';
+export const APP_NAME = 'LetsConnect';
+export const FORWARD_MESSAGE = "They didn't want to answer 🤷🏻‍♂️";
 
 // Firebase web config is public by design; access is enforced by Firestore security rules.
 export const firebaseConfig = {

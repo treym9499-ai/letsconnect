@@ -9,12 +9,12 @@ service cloud.firestore {
     match /users/{uid} {
       allow read: if signedIn();
       allow create: if signedIn() && me() == uid
-        && request.resource.data.keys().hasOnly(['username','displayName','color','createdAt','lastActive','online','inCall'])
+        && request.resource.data.keys().hasOnly(['username','displayName','color','createdAt','lastActive','online','inCall','photoURL'])
         && request.resource.data.username is string && request.resource.data.displayName is string
         && exists(/databases/$(db)/documents/usernames/$(request.resource.data.username))
         && get(/databases/$(db)/documents/usernames/$(request.resource.data.username)).data.uid == uid;
       allow update: if signedIn() && me() == uid
-        && request.resource.data.keys().hasOnly(['username','displayName','color','createdAt','lastActive','online','inCall'])
+        && request.resource.data.keys().hasOnly(['username','displayName','color','createdAt','lastActive','online','inCall','photoURL'])
         && request.resource.data.username == resource.data.username;
       allow delete: if signedIn() && me() == uid;
 
@@ -29,6 +29,13 @@ service cloud.firestore {
               && get(/databases/$(db)/documents/friendRequests/$(uid + '_' + fid)).data.to == fid));
         allow delete: if signedIn() && (me() == uid || me() == fid);
       }
+    }
+
+    // Per-user call log; only the owner can see or write it.
+    match /users/{uid}/callHistory/{cid} {
+      allow read, delete: if signedIn() && me() == uid;
+      allow create: if signedIn() && me() == uid
+        && request.resource.data.keys().hasOnly(['peer','direction','outcome','duration','at']);
     }
 
     match /usernames/{name} {

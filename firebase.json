@@ -1,4 +1,8 @@
 {
   "firestore": { "rules": "firestore.rules", "indexes": "firestore.indexes.json" },
-  "auth": { "providers": { "emailPassword": true } }
+  "auth": { "providers": {
+    "emailPassword": true,
+    "googleSignIn": { "oAuthBrandDisplayName": "LetsConnect", "supportEmail": "treym9499@gmail.com", "authorizedRedirectUris": ["https://treym9499-ai.github.io"] }
+  } },
+  "emulators": { "auth": { "port": 9099 }, "firestore": { "port": 8080 }, "ui": { "enabled": false } }
 }
