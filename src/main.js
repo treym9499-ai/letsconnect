@@ -483,9 +483,14 @@ async function startCall(uid) {
   try { S.call.stream = await getMic(); } catch { S.call.endText = 'Microphone access denied'; return endCall('cancel', true); }
   if (!S.call) return;
   const ref = doc(collection(db, 'calls')); S.call.id = ref.id;
+  // Create the call doc first so the rules (which look up caller/callee on it) allow candidate reads/writes.
+  try { await setDoc(ref, { caller: S.user.uid, callee: uid, status: 'preparing', createdAt: serverTimestamp() }); }
+  catch { S.call.endText = 'Could not start call'; return endCall(null, false, 'Could not start call'); }
+  if (!S.call || S.call.id !== ref.id) { deleteDoc(ref).catch(() => {}); return; }
+  S.call.docReady = true;
   const pc = newPC(ref.id, 'callerCandidates', 'calleeCandidates'); S.call.pc = pc;
   const offer = await pc.createOffer(); await pc.setLocalDescription(offer);
-  await setDoc(ref, { caller: S.user.uid, callee: uid, status: 'ringing', createdAt: serverTimestamp(), offer: { type: offer.type, sdp: offer.sdp } });
+  await updateDoc(ref, { status: 'ringing', createdAt: serverTimestamp(), offer: { type: offer.type, sdp: offer.sdp } });
   S.call.flushCands();
   updateDoc(doc(db, 'users', S.user.uid), { inCall: true }).catch(() => {});
   S.call.state = 'ringing'; callUI(); tone('ringback');
