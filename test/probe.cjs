@@ -1,0 +1,5 @@
+const KEY='AIzaSyDUCCsYG1YnjAtf2MY_rs5AdTmwZCBfzA8',FS='https://firestore.googleapis.com/v1/projects/tdm-chat-804774/databases/(default)/documents';
+(async()=>{const s=await (await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${KEY}`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({returnSecureToken:true,email:'tdm.probe.'+Date.now()+'@example.com',password:'TdmTest!2026'})})).json();
+const n='zz_probe_'+(Date.now()%100000);const r=await fetch(`${FS}/usernames/${n}`,{method:'PATCH',headers:{Authorization:'Bearer '+s.idToken,'content-type':'application/json'},body:JSON.stringify({fields:{uid:{stringValue:s.localId}}})});console.log(r.status);
+if(r.status===200)await fetch(`${FS}/usernames/${n}`,{method:'DELETE',headers:{Authorization:'Bearer '+s.idToken}});
+await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:delete?key=${KEY}`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({idToken:s.idToken})});})();
