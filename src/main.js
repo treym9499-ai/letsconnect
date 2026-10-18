@@ -462,9 +462,13 @@ function newPC(callId, mySide, theirSide) {
     }
     if (pc.connectionState === 'failed') endCall('ended', false, 'Connection failed (network may need a TURN server)');
   };
+  c.remoteCands = [];
+  const drainRemote = () => { if (!pc.remoteDescription) return; c.remoteCands.splice(0).forEach((d) => pc.addIceCandidate(new RTCIceCandidate(d)).catch((er) => console.warn('addIce', er))); };
+  c.drainRemote = drainRemote;
   pc.onconnectionstatechange = onState; pc.oniceconnectionstatechange = onState;
   c.unsubs.push(onSnapshot(collection(db, 'calls', callId, theirSide), (snap) => {
-    snap.docChanges().forEach((ch) => { if (ch.type === 'added') pc.addIceCandidate(new RTCIceCandidate(ch.doc.data())).catch(() => {}); });
+    snap.docChanges().forEach((ch) => { if (ch.type === 'added') c.remoteCands.push(ch.doc.data()); });
+    drainRemote();
   }, () => {}));
   return pc;
 }
@@ -488,7 +492,7 @@ async function startCall(uid) {
     const c = S.call; if (!c || c.id !== ref.id) return;
     if (!s.exists()) return endCall(null, true);
     const d = s.data();
-    if (d.answer && !pc.currentRemoteDescription) { c.state = 'connecting'; stopTone(); callUI(); await pc.setRemoteDescription(new RTCSessionDescription(d.answer)); }
+    if (d.answer && !pc.currentRemoteDescription) { c.state = 'connecting'; stopTone(); callUI(); await pc.setRemoteDescription(new RTCSessionDescription(d.answer)); c.drainRemote(); }
     if (d.status === 'declined') endCall(null, false, 'Call declined');
     else if (d.status === 'busy') endCall(null, false, `${peer.displayName} is on another call`);
     else if (d.status === 'ended') endCall(null, false, 'Call ended');
@@ -517,6 +521,7 @@ async function acceptCall() {
   c.docReady = true;
   const pc = newPC(c.id, 'calleeCandidates', 'callerCandidates'); c.pc = pc; c.docReady = true;
   await pc.setRemoteDescription(new RTCSessionDescription(c.offer));
+  c.drainRemote();
   const ans = await pc.createAnswer(); await pc.setLocalDescription(ans);
   await updateDoc(doc(db, 'calls', c.id), { answer: { type: ans.type, sdp: ans.sdp }, status: 'active' });
   updateDoc(doc(db, 'users', S.user.uid), { inCall: true }).catch(() => {});
