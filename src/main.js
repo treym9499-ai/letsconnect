@@ -21,22 +21,35 @@ const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const COLORS = ['#39ff14', '#00e5ff', '#ff2d55', '#ffd60a', '#bf5af2', '#ff9f0a', '#64d2ff', '#30d158', '#ff375f', '#e5e5e5'];
 const EMOJI = '😀 😂 😍 🥰 😎 🤔 😢 😡 👍 👎 👏 🙏 🔥 🎉 ❤️ 💯 😴 🤯 😅 😉 🙌 💀 🥳 😬 🤝 ✅ 👀 🍕 ☕ 🚀 ⭐ 👋'.split(' ');
+const THEMES = [
+  { id: 'default', name: 'Default', desc: 'Black · white · neon green', bg: '#000', fg: '#fff', ac: '#39ff14' },
+  { id: 'pink', name: 'Neon Pink', desc: 'Black · neon pink', bg: '#000', fg: '#ff3ec8', ac: '#ff3ec8' },
+  { id: 'blue', name: 'Neon Blue', desc: 'Black · neon blue', bg: '#000', fg: '#1fb8ff', ac: '#1fb8ff' },
+  { id: 'usa', name: 'USA', desc: 'Navy · white · red & blue', bg: '#0a1a3f', fg: '#fff', ac: '#ff2d3d' },
+  { id: 'currency', name: 'Currency', desc: 'Black · money green 💰💵', bg: '#000', fg: '#85e05a', ac: '#2ecc40' },
+];
+function applyTheme(t) { if (!THEMES.some((x) => x.id === t)) t = 'default'; document.documentElement.dataset.theme = t; localStorage.setItem('lc-theme', t); }
+applyTheme(localStorage.getItem('lc-theme'));
 const chatIdOf = (a, b) => [a, b].sort().join('_');
 const ICON = {
   phone: '<svg viewBox="0 0 24 24"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1z"/></svg>',
   chats: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3C6.5 3 2 7 2 12c0 2.6 1.2 4.9 3.2 6.5V22l3.3-1.8c1.1.3 2.3.5 3.5.5 5.5 0 10-4 10-9s-4.5-9-10-9z"/></svg>',
   calls: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
   friends: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.5 3.3-5.5 6.5-5.5s5.9 2 6.5 5.5"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.6c2.8-.3 5 1.4 5.5 4.4"/></svg>',
+  gear: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.6 7.6 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1c.5.4 1.1.7 1.7 1l.4 2.6h4l.4-2.6c.6-.3 1.2-.6 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg>',
+  bubble: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5C6.2 2.5 1.5 6.6 1.5 11.7c0 2.9 1.5 5.4 3.9 7.1L4.5 22l4-2c1.1.3 2.3.5 3.5.5 5.8 0 10.5-4.1 10.5-9.2S17.8 2.5 12 2.5z"/></svg>',
+  person: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="7.5" r="4.5"/><path d="M3 21.5c.7-5 4.4-7.5 9-7.5s8.3 2.5 9 7.5z"/></svg>',
+  phoneW: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1z"/></svg>',
   compose: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>',
 };
 
 // ---------- state ----------
-const S = { user: null, me: null, tab: 'chats', friends: new Map(), friendUnsubs: new Map(), reqIn: [], reqOut: [], chats: [], history: [],
+const S = { user: null, me: null, tab: 'home', friends: new Map(), friendUnsubs: new Map(), reqIn: [], reqOut: [], chats: [], history: [],
   openChat: null, msgs: [], unsubs: [], chatUnsubs: [], call: null, chatQ: '', dd: { active: true, requests: true } };
 window.__app = S;
 
 function shell(inner) {
-  document.body.innerHTML = `<header class="appbar"><div class="brand" id="brand">${esc(APP_NAME)}</div><div id="hbtns"></div></header><div class="body" id="body">${inner}</div>`;
+  document.body.innerHTML = `<header class="appbar"><span id="hleft"></span><div class="brand" id="brand">${esc(APP_NAME)}</div><div id="hbtns"></div></header><div class="body" id="body">${inner}</div>`;
 }
 function toast(t) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.append(d); setTimeout(() => d.remove(), 3000); }
 const ms = (ts) => (ts?.toMillis ? ts.toMillis() : typeof ts === 'number' ? ts : 0);
@@ -170,6 +183,7 @@ function startApp(user) {
   S.unsubs.push(onSnapshot(doc(db, 'users', user.uid), (s) => {
     if (!s.exists()) return;
     const first = !S.me; S.me = { id: s.id, ...s.data() };
+    if (S.me.theme && S.me.theme !== document.documentElement.dataset.theme) applyTheme(S.me.theme);
     if (first) { renderShell(); startPresence(); } else renderHeader();
   }));
   S.unsubs.push(onSnapshot(collection(db, 'users', user.uid, 'friends'), (snap) => {
@@ -199,12 +213,13 @@ function startApp(user) {
     snap.docChanges().forEach((ch) => { if (ch.type === 'added') onIncomingCall(ch.doc); });
   }, (e) => console.warn('calls', e)));
   S.ticker = setInterval(() => { renderSide(); renderChatHead(); }, 30000);
+  S.clock = setInterval(() => { const c = $('#clock'); if (c) c.textContent = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }, 1000);
 }
 function stopApp() {
   S.unsubs.forEach((u) => u()); S.unsubs = []; S.chatUnsubs.forEach((u) => u()); S.chatUnsubs = [];
   S.friendUnsubs.forEach((u) => u()); S.friendUnsubs.clear(); S.friends.clear();
-  clearInterval(hbTimer); clearInterval(S.ticker); document.removeEventListener('visibilitychange', onVis); removeEventListener('beforeunload', onUnload);
-  Object.assign(S, { user: null, me: null, reqIn: [], reqOut: [], chats: [], history: [], openChat: null, msgs: [] });
+  clearInterval(hbTimer); clearInterval(S.ticker); clearInterval(S.clock); document.removeEventListener('visibilitychange', onVis); removeEventListener('beforeunload', onUnload);
+  Object.assign(S, { tab: 'home', user: null, me: null, reqIn: [], reqOut: [], chats: [], history: [], openChat: null, msgs: [] });
 }
 const profCache = new Map();
 async function profile(uid) {
@@ -220,16 +235,28 @@ const peerOf = (uid) => S.friends.get(uid) || profCache.get(uid) || { id: uid, d
 function renderShell() {
   shell(`<div class="shell" id="shell">
     <aside class="side">
-      <nav class="tabs"><button data-t="chats">${ICON.chats}<span>Chats</span></button><button data-t="calls">${ICON.calls}<span>Call History</span></button><button data-t="friends">${ICON.friends}<span>Friends</span></button></nav>
       <div class="list" id="list"></div>
     </aside>
     <main class="main" id="main"><div class="placeholder"><div style="font-size:42px">💬</div><div>Select a chat, or tap the pencil to start a new message</div></div></main>
     <section class="info" id="info"></section></div>`);
-  $('.tabs').onclick = (e) => { const t = e.target.closest('button')?.dataset.t; if (t) { S.tab = t; if (innerWidth <= 760) closeChat(true); renderSide(); } };
   renderHeader(); renderSide();
 }
+function go(t) {
+  S.tab = t; $('.drawer')?.remove(); $('.drawer-bg')?.remove();
+  if (S.openChat && (t === 'home' || innerWidth <= 760)) closeChat(true);
+  renderSide();
+}
+function openDrawer() {
+  const bg = document.createElement('div'); bg.className = 'drawer-bg'; bg.onclick = () => { bg.remove(); d.remove(); };
+  const d = document.createElement('nav'); d.className = 'drawer';
+  d.innerHTML = [['home', '🏠 Home'], ['chats', '💬 Messages'], ['calls', '📞 Calls'], ['friends', '👥 Friends'], ['settings', '⚙️ Settings']].map(([t, l]) => `<button data-go="${t}">${l}</button>`).join('') + '<button data-go="signout">🚪 Sign out</button>';
+  d.onclick = (e) => { const t = e.target.closest('button')?.dataset.go; if (!t) return; if (t === 'signout') { bg.remove(); d.remove(); doSignOut(); } else go(t); };
+  document.body.append(bg, d);
+}
+function doSignOut() { heartbeat(false); if (S.call) endCall('ended', { silent: true }); setTimeout(() => signOut(auth), 300); }
 function renderHeader() {
   const h = $('#hbtns'); if (!h || !S.me) return;
+  $('#hleft').innerHTML = '<button class="hamb" id="hamb" title="Menu"><i></i><i></i><i></i></button>'; $('#hamb').onclick = openDrawer;
   h.style.cssText = 'display:flex;gap:8px;align-items:center';
   h.innerHTML = `<button class="hbtn" id="compose" title="New message">${ICON.compose}</button><button id="mebtn" title="Profile">${av(S.me, 36, false)}</button>`;
   $('#compose').onclick = openCompose;
@@ -238,9 +265,9 @@ function renderHeader() {
 function showMenu() {
   $('.menu')?.remove();
   const m = document.createElement('div'); m.className = 'menu';
-  m.innerHTML = `<div style="padding:8px 10px;color:var(--muted);font-size:13px">${esc(S.me.displayName)} · @${esc(S.me.username)}</div><button data-a="profile">Edit profile</button><button data-a="out">Log out</button>`;
+  m.innerHTML = `<div style="padding:8px 10px;color:var(--muted);font-size:13px">${esc(S.me.displayName)} · @${esc(S.me.username)}</div><button data-a="profile">Edit profile</button><button data-a="settings">Settings</button><button data-a="out">Log out</button>`;
   document.body.append(m);
-  m.onclick = (e) => { const a = e.target.closest('button')?.dataset.a; m.remove(); if (a === 'profile') editProfile(); if (a === 'out') { heartbeat(false); setTimeout(() => signOut(auth), 300); } };
+  m.onclick = (e) => { const a = e.target.closest('button')?.dataset.a; m.remove(); if (a === 'profile') editProfile(); if (a === 'settings') go('settings'); if (a === 'out') doSignOut(); };
   setTimeout(() => document.addEventListener('click', () => m.remove(), { once: true }));
 }
 function editProfile() {
@@ -279,17 +306,23 @@ function renderSide() {
   const list = $('#list'); if (!list || !S.me) return;
   const uid = S.user.uid, nIn = S.reqIn.length;
   const unreadChats = visibleChats().filter((c) => c.unread?.[uid]).length;
-  document.querySelectorAll('.tabs button').forEach((b) => {
-    b.classList.toggle('on', b.dataset.t === S.tab);
-    const n = b.dataset.t === 'chats' ? unreadChats : b.dataset.t === 'friends' ? nIn : 0;
-    b.querySelector('.badge')?.remove(); if (n) b.insertAdjacentHTML('beforeend', `<span class="badge">${n}</span>`);
-  });
+  $('#shell')?.classList.toggle('home', S.tab === 'home');
+  const back = '<button class="backhome" id="backhome" data-t="home" title="Back to menu">‹</button>';
   const friends = [...S.friends.values()].sort((a, b) => (isActive(b) - isActive(a)) || a.displayName.localeCompare(b.displayName));
   const active = friends.filter(isActive);
   let h = '';
   const focusId = document.activeElement?.id, caret = document.activeElement?.selectionStart;
-  if (S.tab === 'chats') {
-    h += `<div class="ttl">Chats</div><input class="field" id="cq" placeholder="Search friends" value="${esc(S.chatQ)}" autocomplete="off">`;
+  if (S.tab === 'home') {
+    const pill = (t, icon, label, n) => `<button class="hpill" data-t="${t}">${icon}<span>${label}</span>${n ? `<span class="badge">${n}</span>` : ''}</button>`;
+    h += `<div class="home"><h1>Let's<br>Connect</h1>${pill('chats', ICON.bubble, 'Messages', unreadChats)}${pill('calls', ICON.phoneW, 'Calls', 0)}${pill('friends', ICON.person, 'Friends', nIn)}${pill('settings', ICON.gear, 'Settings', 0)}
+      <div class="clock" id="clock">${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div></div>`;
+  } else if (S.tab === 'settings') {
+    const cur = document.documentElement.dataset.theme;
+    h += `<div class="ttl">${back}Settings</div><div class="sect">Color scheme</div><div class="themes">${THEMES.map((t) => `<button class="theme ${t.id === cur ? 'sel' : ''}" data-theme-id="${t.id}" style="background:${t.bg};color:${t.fg};border-color:${t.ac};box-shadow:0 0 8px ${t.ac}"><b>${t.name}</b><small>${t.desc}</small></button>`).join('')}</div>
+      <div class="sect">Account</div><div class="row" style="cursor:default">${av(S.me, 44, false)}<div class="meta"><div class="name">${esc(S.me.displayName)}</div><div class="snip">@${esc(S.me.username)}${S.user.email ? ' · ' + esc(S.user.email) : ''}</div></div></div>
+      <div style="display:flex;gap:8px;padding:8px"><button class="btn" data-act="profile" style="flex:1">Edit profile</button><button class="btn red" data-act="signout" style="flex:1" id="signoutbtn">Sign out</button></div>`;
+  } else if (S.tab === 'chats') {
+    h += `<div class="ttl">${back}Messages</div><input class="field" id="cq" placeholder="Search friends" value="${esc(S.chatQ)}" autocomplete="off">`;
     const q = S.chatQ.trim().toLowerCase();
     if (q) {
       const hits = friends.filter((f) => f.displayName.toLowerCase().includes(q) || f.username.includes(q.replace(/^@/, '')));
@@ -302,7 +335,7 @@ function renderSide() {
       h += vc.length ? vc.map(chatRow).join('') : '<div class="empty">No conversations yet.<br>Tap the pencil to message a friend.</div>';
     }
   } else if (S.tab === 'calls') {
-    h += '<div class="ttl">Call History</div>';
+    h += `<div class="ttl">${back}Calls<span class="sp"></span>${phoneBtn('', 'id="pickcall" data-pick-call="1" title="Call a friend"')}</div>`;
     h += S.history.length ? S.history.map((c) => {
       const f = peerOf(c.peer); if (!S.friends.has(c.peer) && !profCache.has(c.peer)) profile(c.peer).then(renderSide);
       const out = c.direction === 'outgoing';
@@ -313,7 +346,7 @@ function renderSide() {
         <div class="snip">${new Date(ms(c.at)).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</div></div>${phoneBtn(c.peer)}</div>`;
     }).join('') : '<div class="empty">No calls yet.</div>';
   } else {
-    h += `<div class="ttl">Friends</div>
+    h += `<div class="ttl">${back}Friends</div>
       <form id="sf" style="display:flex;gap:6px"><input class="field" id="sq" placeholder="Add Connection by @username" value="${esc(S.searchQ || '')}" autocomplete="off"><button class="btn sm" style="margin:6px 0">Find</button></form><div id="sres">${S.searchRes || ''}</div>
       <button class="dd ${S.dd.active ? 'open' : ''}" data-dd="active"><span class="gdot"></span> Active Friends <span class="cnt">${active.length}</span><span class="chev">▾</span></button>
       ${S.dd.active ? `<div class="ddbody" id="activeList">${active.length ? active.map((f) => friendRow(f)).join('') : '<div class="empty" style="padding:10px">No friends are using the app right now.</div>'}</div>` : ''}
@@ -353,10 +386,15 @@ function bindSwipe(sw) {
 async function onListClick(e) {
   const sw = e.target.closest('.swipe');
   if (sw?.dataset.justSwiped) return;
-  const t = e.target.closest('[data-acc],[data-decl],[data-add],[data-rm],[data-call],[data-delchat],[data-more],[data-dd],[data-open]'); if (!t) return;
+  const t = e.target.closest('[data-t],[data-theme-id],[data-act],[data-pick-call],[data-acc],[data-decl],[data-add],[data-rm],[data-call],[data-delchat],[data-more],[data-dd],[data-open]'); if (!t) return;
   e.stopPropagation();
   if (sw && sw.classList.contains('open') && !t.dataset.delchat) { toggleSwipe(sw, false); return; }
   try {
+    if (t.dataset.t) return go(t.dataset.t);
+    if (t.dataset.themeId) { applyTheme(t.dataset.themeId); renderSide(); updateDoc(doc(db, 'users', S.user.uid), { theme: t.dataset.themeId }).catch((er) => console.warn('theme', er)); return; }
+    if (t.dataset.act === 'profile') return editProfile();
+    if (t.dataset.act === 'signout') return doSignOut();
+    if (t.dataset.pickCall) return openCallPicker();
     if (t.dataset.dd) { S.dd[t.dataset.dd] = !S.dd[t.dataset.dd]; return renderSide(); }
     if (t.dataset.acc) return acceptReq(S.reqIn.find((r) => r.id === t.dataset.acc));
     if (t.dataset.decl) { await deleteDoc(doc(db, 'friendRequests', t.dataset.decl)); return; }
@@ -411,6 +449,16 @@ async function removeFriend(uid) {
   await b.commit(); if (S.openChat?.other === uid) closeChat();
 }
 
+// ---------- call picker ----------
+function openCallPicker() {
+  const ov = document.createElement('div'); ov.className = 'modal'; ov.id = 'callPicker';
+  const fs = [...S.friends.values()].sort((a, b) => (isActive(b) - isActive(a)) || a.displayName.localeCompare(b.displayName));
+  ov.innerHTML = `<div class="card"><div style="display:flex;align-items:center"><h1 style="flex:1;text-align:left;font-size:20px">Call a friend</h1><button class="icon" id="cpx">✖</button></div>
+    ${fs.length ? fs.map((f) => `<div class="row" data-callpick="${f.id}">${av(f, 44)}<div class="meta"><div class="name">${nameDot(f)}</div><div class="snip">${isActive(f) && f.inCall ? '<span class="sub2">Having a conversation</span>' : status(f)}</div></div>${phoneBtn(f.id, 'tabindex="-1"')}</div>`).join('') : '<div class="empty">No friends yet.</div>'}</div>`;
+  document.body.append(ov);
+  ov.onclick = (e) => { if (e.target === ov || e.target.closest('#cpx')) return ov.remove(); const r = e.target.closest('[data-callpick]'); if (r) { ov.remove(); startCall(r.dataset.callpick); } };
+}
+
 // ---------- compose ----------
 function openCompose() {
   let to = null;
@@ -437,7 +485,7 @@ function openCompose() {
     $('#cms', ov).disabled = true;
     const id = chatIdOf(S.user.uid, to.id);
     await setDoc(doc(db, 'chats', id), { members: [S.user.uid, to.id].sort() }, { merge: true });
-    await sendMsg(id, to.id, text); ov.remove(); S.tab = 'chats'; renderSide(); openChat(to.id);
+    await sendMsg(id, to.id, text); ov.remove(); go('chats'); openChat(to.id);
   };
   upd(); $('#toq', ov).focus();
 }

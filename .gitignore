@@ -3,3 +3,5 @@ dist
 .firebase
 *.log
 .jdk21
+firestore-debug.log
+test/node_modules

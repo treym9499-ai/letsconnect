@@ -23,6 +23,7 @@ git push                                    # frontend deploy via Actions
 - Presence includes `inCall`, so friends see "Having a conversation".
 - Each user's call log lives in `users/{uid}/callHistory` (owner-only).
 - Local testing: `npx firebase-tools emulators:start --only auth,firestore` + `npm run build && npx vite preview`, open `http://localhost:4173/?emu=1`; `test/e2e.cjs` runs with `EMU=1`.
+- Home menu (hamburger drawer, 4 glowing pills, live clock); Settings has 5 color schemes (Default, Neon Pink, Neon Blue, USA, Currency) saved to `users/{uid}.theme` + localStorage.
 
 ## Data model
 - `users/{uid}` public profile + presence (`lastActive`, `online`, `inCall`) — no email stored.
