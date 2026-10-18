@@ -137,13 +137,14 @@ async function startApp(user) {
     S.reqOut = await Promise.all(snap.docs.map(async (d) => ({ id: d.id, ...d.data(), user: await profile(d.data().to) })));
     renderSide();
   }));
-  S.unsubs.push(onSnapshot(query(collection(db, 'chats'), where('members', 'array-contains', user.uid), orderBy('lastAt', 'desc'), limit(100)), (snap) => {
+  const subChats = () => S.unsubs.push(onSnapshot(query(collection(db, 'chats'), where('members', 'array-contains', user.uid), orderBy('lastAt', 'desc'), limit(100)), (snap) => {
     S.chats = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     renderSide();
     if (S.openChat) { const c = S.chats.find((x) => x.id === S.openChat.id); if (c) { S.openChat.data = c; renderMsgs(); } }
     const unread = S.chats.reduce((n, c) => n + (c.unread?.[user.uid] || 0), 0);
     document.title = (unread ? `(${unread}) ` : '') + APP_NAME;
-  }, (e) => console.warn('chats', e)));
+  }, (e) => { console.warn('chats', e); setTimeout(() => { if (S.user?.uid === user.uid) subChats(); }, 15000); }));
+  subChats();
   S.unsubs.push(onSnapshot(query(collection(db, 'calls'), where('callee', '==', user.uid), where('status', '==', 'ringing')), (snap) => {
     snap.docChanges().forEach((ch) => { if (ch.type === 'added') onIncomingCall(ch.doc); });
   }, (e) => console.warn('calls', e)));
