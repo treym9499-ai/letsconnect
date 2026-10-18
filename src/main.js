@@ -449,7 +449,7 @@ function newPC(callId, mySide, theirSide) {
   window.__pc = pc;
   const c = S.call;
   c.stream.getTracks().forEach((t) => pc.addTrack(t, c.stream));
-  const sendCand = (cand) => addDoc(collection(db, 'calls', callId, mySide), cand).catch((er) => console.warn('ice', er));
+  const sendCand = (cand) => { c.sent = (c.sent || 0) + 1; return addDoc(collection(db, 'calls', callId, mySide), cand).then(() => { c.sentOk = (c.sentOk || 0) + 1; }).catch((er) => console.warn('ice', er)); };
   c.pendingCands = [];
   c.flushCands = () => { c.docReady = true; c.pendingCands.forEach(sendCand); c.pendingCands = []; };
   pc.onicecandidate = (e) => { if (!e.candidate) return; const j = e.candidate.toJSON(); if (c.docReady) sendCand(j); else c.pendingCands.push(j); };
@@ -468,8 +468,9 @@ function newPC(callId, mySide, theirSide) {
   pc.onconnectionstatechange = onState; pc.oniceconnectionstatechange = onState;
   c.unsubs.push(onSnapshot(collection(db, 'calls', callId, theirSide), (snap) => {
     snap.docChanges().forEach((ch) => { if (ch.type === 'added') c.remoteCands.push(ch.doc.data()); });
+    c.gotRemote = (c.gotRemote || 0) + snap.docChanges().length;
     drainRemote();
-  }, () => {}));
+  }, (er) => console.warn('cands', er)));
   return pc;
 }
 async function getMic() {
